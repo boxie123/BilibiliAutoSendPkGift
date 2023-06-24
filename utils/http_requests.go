@@ -10,9 +10,34 @@ import (
 )
 
 const (
-	ApiBagList  = "https://api.live.bilibili.com/xlive/web-room/v1/gift/bag_list"
-	ApiSendGift = "https://api.live.bilibili.com/xlive/revenue/v1/gift/sendBag"
+	ApiBagList         = "https://api.live.bilibili.com/xlive/web-room/v1/gift/bag_list"
+	ApiSendGift        = "https://api.live.bilibili.com/xlive/revenue/v1/gift/sendBag"
+	ApiGetRoomPlayInfo = "https://api.live.bilibili.com/xlive/web-room/v1/index/getRoomPlayInfo"
 )
+
+func getRoomPlayInfo(roomId int) int {
+	resp, err := http.Get(fmt.Sprintf("%s?room_id=%d", ApiGetRoomPlayInfo, roomId))
+	if err != nil {
+		panic(fmt.Sprintf("Error: %v", err))
+	}
+	defer resp.Body.Close()
+
+	var apiResponse ApiResponseCommon
+	err = json.NewDecoder(resp.Body).Decode(&apiResponse)
+	if err != nil {
+		panic(fmt.Sprintf("Error: %v", err))
+	}
+
+	if apiResponse.Code != 0 {
+		panic(fmt.Sprintf("Error: %s", apiResponse.Message))
+	}
+
+	uid, ok := apiResponse.Data["uid"].(int)
+	if !ok {
+		panic("Error: uid is not an int")
+	}
+	return uid
+}
 
 func getInfoFromCookie(cookieStr string) (int, string, error) {
 	// 从cookie字符串解析 uid 和 csrf
@@ -67,6 +92,8 @@ func SendGiftFromBag(client *http.Client, cookie string, bagGiftInfo BagGiftInfo
 	if err != nil {
 		return err
 	}
+	ruid := getRoomPlayInfo(roomId)
+
 	paramsMap := map[string]interface{}{
 		"uid":           uid,
 		"bag_id":        bagGiftInfo.BagID,
@@ -78,7 +105,7 @@ func SendGiftFromBag(client *http.Client, cookie string, bagGiftInfo BagGiftInfo
 		"price":         0,
 		"biz_code":      "live",
 		"biz_id":        roomId,
-		"ruid":          1485569,
+		"ruid":          ruid,
 		"csrf":          csrf,
 		"csrf_token":    csrf,
 	}
