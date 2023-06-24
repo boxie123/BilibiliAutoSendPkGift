@@ -6,13 +6,19 @@ type LoginInfo struct {
 	RoomId    int    `json:"roomId"`
 }
 
+type ApiResponseCommon struct {
+	Code    int                    `json:"code"`
+	Message string                 `json:"message"`
+	Data    map[string]interface{} `json:"data"`
+}
+
 type ApiResponseBagList struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
 	Data    struct {
 		List []BagGiftInfo `json:"list"`
 		Time int           `json:"time"`
-	}
+	} `json:"data"`
 }
 
 type BagGiftInfo struct {

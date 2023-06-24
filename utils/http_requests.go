@@ -1,14 +1,9 @@
 package utils
 
 import (
-	"bufio"
-	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"io"
 	"net/http"
-	"net/http/cookiejar"
 	"net/url"
 	"strconv"
 	"strings"
@@ -19,60 +14,36 @@ const (
 	ApiSendGift = "https://api.live.bilibili.com/xlive/revenue/v1/gift/sendBag"
 )
 
-func parseCookie(cookieStr string) ([]*http.Cookie, error) {
-	// 创建一个包含cookie字符串的简单HTTP请求字符串
-	requestStr := fmt.Sprintf("GET / HTTP/1.1\r\nHost: bilibili.com\r\nCookie: %s\r\n\r\n", cookieStr)
-
-	// 使用http.ReadRequest函数解析HTTP请求字符串
-	request, err := http.ReadRequest(bufio.NewReader(strings.NewReader(requestStr)))
-	if err != nil {
-		return nil, err
-	}
-
-	// 从请求中获取解析后的cookie
-	return request.Cookies(), nil
-}
-
-func GetUIDFromCookie(cookieStr string) (int, error) {
-	// 从cookie字符串解析uid
+func getInfoFromCookie(cookieStr string) (int, string, error) {
+	// 从cookie字符串解析 uid 和 csrf
 	cookieParts := strings.Split(cookieStr, "; ")
+	var uid int
+	var err error
+	var csrf string
 	for _, part := range cookieParts {
 		kv := strings.Split(part, "=")
 		switch kv[0] {
 		case "DedeUserID":
-			uid, err := strconv.Atoi(kv[1])
-			if err != nil {
-				return 0, err
-			}
-			return uid, nil
+			uid, err = strconv.Atoi(kv[1])
+		case "bili_jct":
+			csrf = kv[1]
 		}
 	}
-	return 0, errors.New("cookie中无uid信息")
+	return uid, csrf, err
 }
 
-func MakeClient(cookieStr string) *http.Client {
+func MakeClient() *http.Client {
 	// 创建一个新的http.Client实例
 	client := &http.Client{}
-
-	// 创建一个cookiejar，用于存储cookie
-	jar, _ := cookiejar.New(nil)
-
-	// 使用parseCookie函数解析cookie字符串
-	cookies, err := parseCookie(cookieStr)
-	if err != nil {
-		panic(err)
-	}
-
-	// 将解析后的cookie添加到cookiejar中
-	u, _ := url.Parse("https://api.live.bilibili.com")
-	jar.SetCookies(u, cookies)
-	client.Jar = jar
 
 	return client
 }
 
-func GetBagList(client *http.Client) []BagGiftInfo {
-	resp, err := client.Get(ApiBagList)
+func GetBagList(client *http.Client, cookie string) []BagGiftInfo {
+	req, _ := http.NewRequest("GET", ApiBagList, nil)
+	req.Header.Add("Cookie", cookie)
+
+	resp, err := client.Do(req)
 	if err != nil {
 		panic(err)
 	}
@@ -91,8 +62,12 @@ func GetBagList(client *http.Client) []BagGiftInfo {
 	return apiResponse.Data.List
 }
 
-func SendGiftFromBag(client *http.Client, bagGiftInfo BagGiftInfo, uid int, roomId int) error {
-	params := map[string]interface{}{
+func SendGiftFromBag(client *http.Client, cookie string, bagGiftInfo BagGiftInfo, roomId int) error {
+	uid, csrf, err := getInfoFromCookie(cookie)
+	if err != nil {
+		return err
+	}
+	paramsMap := map[string]interface{}{
 		"uid":           uid,
 		"bag_id":        bagGiftInfo.BagID,
 		"gift_id":       bagGiftInfo.GiftID,
@@ -103,19 +78,22 @@ func SendGiftFromBag(client *http.Client, bagGiftInfo BagGiftInfo, uid int, room
 		"price":         0,
 		"biz_code":      "live",
 		"biz_id":        roomId,
-		"ruid":          roomId,
+		"ruid":          1485569,
+		"csrf":          csrf,
+		"csrf_token":    csrf,
 	}
 
-	jsonData, err := json.Marshal(params)
+	params := url.Values{}
+	for key, value := range paramsMap {
+		params.Set(key, fmt.Sprintf("%v", value))
+	}
+
+	req, err := http.NewRequest("POST", ApiSendGift, strings.NewReader(params.Encode()))
 	if err != nil {
 		return err
 	}
-
-	req, err := http.NewRequest("POST", ApiSendGift, bytes.NewBuffer(jsonData))
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Cookie", cookie)
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -127,10 +105,15 @@ func SendGiftFromBag(client *http.Client, bagGiftInfo BagGiftInfo, uid int, room
 		return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
 
-	body, err := io.ReadAll(resp.Body)
+	var apiResponse ApiResponseCommon
+	err = json.NewDecoder(resp.Body).Decode(&apiResponse)
 	if err != nil {
 		return err
 	}
-	fmt.Println("Response:", string(body))
+
+	if apiResponse.Code != 0 {
+		return fmt.Errorf("response error when send gift: %s", apiResponse.Message)
+	}
+
 	return nil
 }

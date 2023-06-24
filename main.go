@@ -11,12 +11,9 @@ import (
 func main() {
 	var filePath = utils.GetSettingFilePath()
 	_, cookie, roomId := utils.ReaderSettingMode(filePath)
-	uid, err := utils.GetUIDFromCookie(cookie)
-	if err != nil {
-		log.Fatal(err)
-	}
-	client := utils.MakeClient(cookie)
-	bagGiftList := utils.GetBagList(client)
+
+	client := utils.MakeClient()
+	bagGiftList := utils.GetBagList(client, cookie)
 
 	var wg sync.WaitGroup
 	var count int = 0
@@ -29,12 +26,12 @@ func main() {
 		go func(bagGiftInfo utils.BagGiftInfo) {
 			defer wg.Done()
 
-			err := utils.SendGiftFromBag(client, bagGiftInfo, uid, roomId)
+			err := utils.SendGiftFromBag(client, cookie, bagGiftInfo, roomId)
 			if err != nil {
 				log.Println("发送礼物失败")
 			} else {
 				mu.Lock()
-				count++
+				count = count + bagGiftInfo.GiftNum
 				mu.Unlock()
 			}
 		}(bagGiftInfo)
