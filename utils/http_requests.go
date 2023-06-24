@@ -32,11 +32,11 @@ func getRoomPlayInfo(roomId int) int {
 		panic(fmt.Sprintf("Error: %s", apiResponse.Message))
 	}
 
-	uid, ok := apiResponse.Data["uid"].(int)
+	uid, ok := apiResponse.Data["uid"].(float64)
 	if !ok {
 		panic("Error: uid is not an int")
 	}
-	return uid
+	return int(uid)
 }
 
 func getInfoFromCookie(cookieStr string) (int, string, error) {
