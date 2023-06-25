@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"net/http"
 	"sync"
 
 	"github.com/boxie123/BilibiliAutoSendPkGift/utils"
@@ -12,14 +13,15 @@ func main() {
 	var filePath = utils.GetSettingFilePath()
 	_, cookie, roomId := utils.ReaderSettingMode(filePath)
 
-	client := utils.MakeClient()
+	client := &http.Client{}
 	bagGiftList := utils.GetBagList(client, cookie)
 
 	var wg sync.WaitGroup
 	var count int = 0
 	var mu sync.Mutex
+	giftName := "PK票"
 	for _, bagGiftInfo := range bagGiftList {
-		if bagGiftInfo.GiftName != "PK票" {
+		if bagGiftInfo.GiftName != giftName {
 			continue
 		}
 		wg.Add(1)
@@ -28,7 +30,7 @@ func main() {
 
 			err := utils.SendGiftFromBag(client, cookie, bagGiftInfo, roomId)
 			if err != nil {
-				log.Println("发送礼物失败")
+				log.Printf("发送礼物失败: %v", err)
 			} else {
 				mu.Lock()
 				count = count + bagGiftInfo.GiftNum
@@ -37,5 +39,5 @@ func main() {
 		}(bagGiftInfo)
 	}
 	wg.Wait()
-	fmt.Printf("共送出 %d 张PK票\n", count)
+	fmt.Printf("共送出 %d 份 %s\n", count, giftName)
 }

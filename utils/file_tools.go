@@ -6,6 +6,7 @@ import (
 	"os"
 )
 
+// 获取配置文件路径
 func GetSettingFilePath() string {
 	var FilePath string
 	if len(os.Args) <= 1 {
@@ -21,9 +22,10 @@ func GetSettingFilePath() string {
 	return FilePath
 }
 
+// 读取配置文件
 func ReaderSettingMode(filePath string) (string, string, int) {
 	var LoginData, _ = os.ReadFile(filePath)
-	var loginContent = LoginInfo{}
+	var loginContent = ConfigInfo{}
 
 	err := json.Unmarshal(LoginData, &loginContent)
 	if err != nil {
