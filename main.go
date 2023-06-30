@@ -7,11 +7,12 @@ import (
 	"sync"
 
 	"github.com/boxie123/BilibiliAutoSendPkGift/utils"
+	login "github.com/boxie123/GoBilibiliLogin"
 )
 
 func main() {
-	var filePath = utils.GetSettingFilePath()
-	_, cookie, roomId := utils.ReaderSettingMode(filePath)
+	_, _, filePath := login.Login()
+	_, cookie, roomId := utils.ReaderSetting(filePath)
 
 	client := &http.Client{}
 	bagGiftList := utils.GetBagList(client, cookie)
