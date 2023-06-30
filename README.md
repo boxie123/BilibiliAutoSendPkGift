@@ -8,13 +8,13 @@
 ```cmd
 BilibiliAutoSendPkGift.exe your-config-file.json
 ```
+或直接双击运行，会自动生成配置文件
 
 ### 手动构建
 
 ```cmd
 go run main.go your-config-file.json
 ```
-或直接双击运行，会自动生成配置文件
 
 ### 配置文件格式
 ```json
