@@ -24,6 +24,6 @@ go run main.go your-config-file.json
 }
 ```
 
-> 可使用 [BilibiliLogin-Lite](https://github.com/FangCunWuChang/BilibiliLogin-Lite) 生成登录信息后添加 `roomId` 项
+> 可在自动生成登录信息后添加 `roomId` 项
 
 或直接从浏览器开发者工具中复制cookie字符串
